@@ -4,104 +4,108 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>沖縄ドライブルートマップ</title>
-    
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCt9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
     <style>
-        /* カスタムアイコンのスタイル */
-        .custom-div-icon {
-            background-color: #3b82f6; /* Tailwind blue-500 */
-            color: white;
-            border: 2px solid white;
-            border-radius: 50%;
-            text-align: center;
-            line-height: 24px; /* Icon size - border */
-            font-size: 11px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-        
-        .custom-div-icon.start-end {
-            background-color: #ef4444; /* Tailwind red-500 */
-        }
-        
-        /* 地図の高さ調整・確実な表示保証 */
-        #map {
-            width: 100%;
+        html, body {
             height: 100%;
-            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* 全体のスクロールを防ぐ */
+        }
+        #map {
+            height: 100%;
+            width: 100%;
             z-index: 10;
         }
-
-        /* スクロールバーのカスタマイズ */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
+        .custom-marker {
+            background-color: #2563eb; /* Tailwind blue-600 */
+            color: white;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 28px;
+            font-weight: bold;
+            font-size: 14px;
+            border: 2px solid white;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+            transition: transform 0.2s;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
+        .custom-marker:hover {
+            transform: scale(1.1);
+            background-color: #1d4ed8; /* Tailwind blue-700 */
+        }
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
             background: #f1f1f1; 
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
+        ::-webkit-scrollbar-thumb {
             background: #cbd5e1; 
-            border-radius: 10px;
+            border-radius: 4px;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8; 
         }
     </style>
 </head>
-<body class="bg-gray-50 h-screen flex flex-col font-sans text-gray-800">
+<body class="bg-gray-50 flex flex-col font-sans text-gray-800">
 
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-4 shadow-md z-20">
-        <h1 class="text-xl font-bold">スケジュール沖縄(案) - ドライブルート</h1>
-        <p class="text-sm opacity-90">2026/6/5 (金) のスケジュール地図（9:00レンタカー借出 / 18:00返却）</p>
+    <!-- ヘッダー -->
+    <header class="bg-blue-600 text-white p-4 shadow-md z-20 flex-shrink-0">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <i class="ph ph-map-trifold text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-wider">沖縄ドライブルート</h1>
+            </div>
+            <button onclick="resetMapView()" class="bg-white text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded text-sm font-bold flex items-center gap-1 shadow transition-colors whitespace-nowrap active:scale-95">
+                <i class="ph ph-arrows-out text-lg"></i>
+                <span class="hidden sm:inline">全体を表示</span>
+                <span class="sm:hidden">全体</span>
+            </button>
+        </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="flex-1 flex flex-col md:flex-row overflow-hidden">
+    <!-- メインコンテンツ -->
+    <main class="flex flex-col md:flex-row flex-1 overflow-hidden">
         
-        <!-- Sidebar: Timeline -->
-        <aside class="w-full md:w-1/3 lg:w-1/4 bg-white border-r border-gray-200 flex flex-col h-1/2 md:h-full flex-shrink-0">
-            <div class="p-3 bg-gray-100 border-b border-gray-200 font-semibold text-gray-700 flex justify-between items-center flex-shrink-0">
-                <span>タイムライン</span>
-                <span class="text-xs bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full">全16地点</span>
+        <!-- スケジュールリスト (サイドバー) -->
+        <aside class="w-full md:w-1/3 lg:w-1/4 bg-white shadow-lg overflow-y-auto z-20 flex-shrink-0 border-r border-gray-200">
+            <!-- スクロール時に固定されないよう、stickyクラスを削除 -->
+            <div class="p-4 border-b border-gray-100 bg-gray-50">
+                <h2 class="text-lg font-semibold text-gray-700 flex items-center gap-2">
+                    <i class="ph ph-calendar-check text-blue-600"></i>
+                    ツアースケジュール
+                </h2>
+                <p class="text-xs text-gray-600 mt-1 font-medium" id="spot-count"></p>
             </div>
             
-            <div class="flex-1 overflow-y-auto p-3 custom-scrollbar" id="timeline-container">
-                <!-- Timeline items will be injected here -->
+            <div class="p-4" id="schedule-list">
+                <!-- JavaScriptでスケジュールをここに生成します -->
             </div>
         </aside>
 
-        <!-- Map Container -->
-        <section class="w-full md:w-2/3 lg:w-3/4 h-1/2 md:h-full relative flex-1">
+        <!-- マップエリア -->
+        <section class="w-full md:w-2/3 lg:w-3/4 flex-1 relative">
             <div id="map"></div>
-            <!-- 全体表示ボタン -->
-            <button id="reset-view-btn" class="absolute bottom-6 right-6 z-[1000] bg-white p-3 rounded-full shadow-lg text-gray-700 hover:bg-blue-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-200 transition-colors hidden" title="ルート全体を表示">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
-                </svg>
-            </button>
         </section>
 
     </main>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
     <script>
-        // 【ルート最適化・シンプル化完了】
-        // 1. 座喜味茶房を削除
-        // 2. パルコをレンタカー借出の直後（5番目）に移動。これにより那覇西海岸道路～58号北上が劇的にスムーズに。
-        // 3. タイムラインの「公式サイトを開く」アイコンを完全に削除
-        // 4. アクション名はシンプルに統一し、滞在時間をカッコ書きで明記
         const scheduleData = [
             { id: 1, displayLabel: 1, name: "ホテルJALシティ那覇", time: "8:00発", action: "出発", lat: 26.215878, lng: 127.685875, address: "沖縄県那覇市牧志1-3-70", website: "https://www.naha.jalcity.co.jp/", transitNext: "徒歩12分 (0.9km)", isTerminal: true },
             { id: 2, displayLabel: 2, name: "那覇市役所", time: "8:12着 / 8:22発", action: "外観見学 (10分)", lat: 26.212100, lng: 127.679100, address: "沖縄県那覇市泉崎1-1-1", website: "https://www.city.naha.okinawa.jp/", transitNext: "徒歩2分 (0.15km)", isTerminal: false },
-            { id: 3, displayLabel: 3, name: "沖縄県庁", time: "8:24着 / 8:34発", action: "周辺散策 (10分)", lat: 26.212500, lng: 127.680900, address: "沖縄県那覇市泉崎1-2-2", website: "https://www.pref.okinawa.lg.jp/", transitNext: "徒歩13分 (1.0km)", isTerminal: false },
+            { id: 3, displayLabel: 3, name: "沖縄県庁", time: "8:24着 / 8:34発", action: "外観見学 (10分)", lat: 26.212500, lng: 127.680900, address: "沖縄県那覇市泉崎1-2-2", website: "https://www.pref.okinawa.lg.jp/", transitNext: "徒歩13分 (1.0km)", isTerminal: false },
             { id: 4, displayLabel: 4, name: "オリックスレンタカー", time: "8:47着 / 9:00発", action: "レンタカー借出 (13分)", lat: 26.216649, lng: 127.685932, address: "沖縄県那覇市牧志2-17-12 いとみね會館 1F", website: "https://car.orix.co.jp/shops/?shops_pk=784", transitNext: "車で15分 (5.0km)", isTerminal: false },
             { id: 5, displayLabel: 5, name: "浦添西海岸PARCO CITY", time: "9:15着 / 9:30発", action: "お買い物 (15分)", lat: 26.262500, lng: 127.696600, address: "沖縄県浦添市西洲3-1-1", website: "https://www.parcocity.jp/", transitNext: "車で40分 (20.0km)", isTerminal: false },
             { id: 6, displayLabel: 6, name: "道の駅かでな", time: "10:10着 / 10:40発", action: "観光・休憩 (30分)", lat: 26.368070, lng: 127.774210, address: "沖縄県中頭郡嘉手納町屋良1026-3", website: "https://michinoeki-kadena.jp/", transitNext: "車で10分 (6.24km)", isTerminal: false },
@@ -109,7 +113,7 @@
             { id: 8, displayLabel: 8, name: "花笠", time: "11:30着 / 12:30発", action: "昼食 (60分)", lat: 26.436200, lng: 127.716800, address: "沖縄県中頭郡読谷村宇座657-1", website: "https://tabelog.com/okinawa/A4703/A470304/47007472/", transitNext: "車で10分 (5.0km)", isTerminal: false },
             { id: 9, displayLabel: 9, name: "座喜味城跡", time: "12:40着 / 13:10発", action: "世界遺産見学 (30分)", lat: 26.407900, lng: 127.742100, address: "沖縄県中頭郡読谷村座喜味708-6", website: "http://www.yuntanza-museum.jp/", transitNext: "車で17分 (9.6km)", isTerminal: false },
             { id: 10, displayLabel: 10, name: "琉冰 おんなの駅", time: "13:27着 / 13:42発", action: "休憩 (15分)", lat: 26.436157, lng: 127.794833, address: "沖縄県国頭郡恩納村仲泊1656-9", website: "https://onnanoeki.com/", transitNext: "車で43分 (21.2km)", isTerminal: false },
-            { id: 11, displayLabel: 11, name: "道の駅 あやはし館", time: "14:25着 / 14:50発", action: "休憩 (25分)", lat: 26.331500, lng: 127.930400, address: "沖縄県うるま市与那城屋平4", website: "https://uruma-ru.jp/member/uminoekiayahashikan/", transitNext: "車で30分 (16.0km)", isTerminal: false },
+            { id: 11, displayLabel: 11, name: "道の駅 あやはし館", time: "14:25着 / 14:50発", action: "海中道路走行 (25分)", lat: 26.331500, lng: 127.930400, address: "沖縄県うるま市与那城屋平4", website: "https://uruma-ru.jp/member/uminoekiayahashikan/", transitNext: "車で30分 (16.0km)", isTerminal: false },
             { id: 12, displayLabel: 12, name: "中村家住宅", time: "15:20着 / 15:50発", action: "重要文化財見学 (30分)", lat: 26.289700, lng: 127.798100, address: "沖縄県中頭郡北中城村大城106", website: "https://www.nakamurake.net/", transitNext: "車で30分 (18.5km)", isTerminal: false },
             { id: 13, displayLabel: 13, name: "沖縄県立博物館・美術館", time: "16:20着 / 16:30発", action: "外観見学 (10分)", lat: 26.227500, lng: 127.694200, address: "沖縄県那覇市おもろまち3-1-1", website: "https://okimu.jp/", transitNext: "車で3分 (0.8km)", isTerminal: false },
             { id: 14, displayLabel: 14, name: "ガソリンスタンド", time: "16:33着 / 16:43発", action: "給油 (10分)", lat: 26.225100, lng: 127.696100, address: "沖縄県那覇市おもろまち4-21-22", website: "", transitNext: "車で10分 (2.5km)", isTerminal: false },
@@ -117,167 +121,160 @@
             { id: 16, displayLabel: 16, name: "ホテルJALシティ那覇", time: "16:59着", action: "到着", lat: 26.215878, lng: 127.685875, address: "沖縄県那覇市牧志1-3-70", website: "https://www.naha.jalcity.co.jp/", isTerminal: true }
         ];
 
-        let map;
-        let markers = [];
+        // マップの初期化
+        // 最初の地点と最後の地点の中間あたりを初期の中心座標とする（概算）
+        const map = L.map('map').setView([26.326, 127.760], 11);
 
-        // 初期化処理
-        function initMap() {
-            // 地図の初期化 (沖縄本島中心付近)
-            map = L.map('map', {
-                zoomControl: true,
-                fadeAnimation: true
-            }).setView([26.32, 127.8], 11);
+        // OpenStreetMapタイルの追加
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
 
-            // 【マップ読み込み遅延・崩れ対策】
-            // 標準の重いOSMタイルから、超高速軽量配信＆デザインがとても綺麗な「CartoDB Voyagerタイル」へ変更
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
+        // マーカーを保持する配列
+        const markers = {};
+        const latlngs = [];
 
-            const timelineContainer = document.getElementById('timeline-container');
-            const latlngs = [];
-
-            // 各地点の処理
-            scheduleData.forEach((point, index) => {
-                latlngs.push([point.lat, point.lng]);
-
-                const isStartOrEnd = point.id === 1 || point.id === scheduleData.length;
-                const iconClass = isStartOrEnd ? 'custom-div-icon start-end' : 'custom-div-icon';
-                const label = point.displayLabel; 
-
-                const customIcon = L.divIcon({
-                    className: iconClass,
-                    html: label,
-                    iconSize: [28, 28],
-                    iconAnchor: [14, 14]
-                });
-
-                const marker = L.marker([point.lat, point.lng], { icon: customIcon }).addTo(map);
-                markers.push(marker);
-
-                // ポップアップの設定
-                const websiteLinkPopup = point.website ? `
-                    <a href="${point.website}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline inline-flex items-center mt-2 text-xs">
-                        <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
-                        WEBサイトを開く
-                    </a>` : '';
-
-                const popupContent = `
-                    <div class="font-sans min-w-[200px]">
-                        <strong class="text-blue-600 text-sm block mb-1">No.${label} ${point.name}</strong>
-                        <div class="text-xs text-gray-600 mb-1">⏰ ${point.time}</div>
-                        <div class="text-[11px] bg-gray-100 p-1 rounded inline-block text-gray-500 mb-2">${point.action}</div>
-                        <div class="text-[11px] text-gray-600 flex items-start mt-1">
-                            <svg class="w-3.5 h-3.5 mr-1 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <span class="break-all">${point.address}</span>
-                        </div>
-                        ${websiteLinkPopup}
-                    </div>
-                `;
-                marker.bindPopup(popupContent);
-
-                // タイムラインの要素作成
-                const isLast = index === scheduleData.length - 1;
-                const timelineItem = document.createElement('div');
-                timelineItem.className = 'relative cursor-pointer group w-full flex flex-col';
-                timelineItem.onclick = () => {
-                    map.setView([point.lat, point.lng], 14);
-                    marker.openPopup();
-                    
-                    document.querySelectorAll('.timeline-card').forEach(el => el.classList.remove('border-blue-500', 'bg-blue-50'));
-                    document.querySelectorAll('.timeline-card')[index].classList.add('border-blue-500', 'bg-blue-50');
-                };
-
-                const isWalking = point.transitNext && point.transitNext.includes("徒歩");
-                const transitIcon = isWalking ? '🚶' : '🚗';
-
-                const transitInfo = !isLast ? `
-                    <div class="pl-10 py-0.5 flex items-center text-[10px] text-gray-500 font-semibold leading-none" onclick="event.stopPropagation();">
-                        <span class="mr-1 text-xs">${transitIcon}</span>
-                        <span>${point.transitNext}</span>
-                    </div>
-                ` : '';
-
-                timelineItem.innerHTML = `
-                    <!-- Line connecting points -->
-                    ${!isLast ? '<div class="absolute top-4 left-[13px] bottom-0 w-0.5 bg-blue-200 group-hover:bg-blue-400 transition-colors"></div>' : ''}
-                    
-                    <div class="flex items-start pb-0.5 w-full">
-                        <!-- Circular Node -->
-                        <div class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white z-10 ${isStartOrEnd ? 'bg-red-500' : 'bg-blue-500'} border-2 border-white shadow-sm mt-0.5">
-                            ${label}
-                        </div>
-                        
-                        <!-- Content Card -->
-                        <div class="ml-3 flex-1 min-w-0 bg-white border border-gray-200 rounded-lg py-1 px-2.5 shadow-sm hover:shadow-md transition-shadow timeline-card">
-                            <div class="flex justify-between items-start">
-                                <h3 class="font-bold text-gray-800 text-xs sm:text-sm leading-tight flex-1 whitespace-normal break-words">${point.name}</h3>
-                            </div>
-                            <div class="flex items-center justify-between mt-1 text-[10px] leading-none">
-                                <div class="flex items-center text-gray-500 flex-shrink-0">
-                                    <svg class="w-3 h-3 mr-0.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                    <span>${point.time}</span>
-                                </div>
-                                <span class="text-[9px] text-white bg-gray-700 px-1.5 py-0.5 rounded font-medium ml-2 flex-shrink-0">${point.action}</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    ${transitInfo}
-                `;
-                
-                timelineContainer.appendChild(timelineItem);
-            });
-
-            // 経路の線を引く (Polyline)
-            const polyline = L.polyline(latlngs, {
-                color: '#3b82f6', 
-                weight: 4,
-                opacity: 0.7,
-                dashArray: '8, 8', 
-                lineJoin: 'round'
-            }).addTo(map);
-
-            const fitBoundsToRoute = () => {
-                map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
-            };
-
-            // 【超重要】Leafletのロード崩れ徹底対策（whenReady + setTimeout多重トリガー）
-            map.whenReady(() => {
-                setTimeout(() => {
-                    map.invalidateSize();
-                    fitBoundsToRoute();
-                }, 200);
-            });
-
-            // 全体表示ボタンの設定
-            const resetBtn = document.getElementById('reset-view-btn');
-            resetBtn.classList.remove('hidden');
-            resetBtn.addEventListener('click', () => {
-                fitBoundsToRoute();
-                document.querySelectorAll('.timeline-card').forEach(el => el.classList.remove('border-blue-500', 'bg-blue-50'));
-                markers.forEach(m => m.closePopup());
-            });
-
-            // ウィンドウサイズ変更時にも確実にサイズを追従
-            window.addEventListener('resize', () => {
-                map.invalidateSize();
-            });
+        const scheduleListContainer = document.getElementById('schedule-list');
+        const spotCountElement = document.getElementById('spot-count');
+        
+        // スポット数を動的に設定
+        if (spotCountElement) {
+            spotCountElement.textContent = `全${scheduleData.length}スポット`;
         }
 
-        // DOM構築後、およびリソース全ロード後にそれぞれ初期化保証をかける
-        document.addEventListener('DOMContentLoaded', () => {
-            initMap();
+        // カスタムアイコンを作成する関数
+        const createCustomIcon = (number, isTerminal) => {
+            const bgColor = isTerminal ? '#dc2626' : '#2563eb'; // 終着点は赤、その他は青
+            const hoverColor = isTerminal ? '#b91c1c' : '#1d4ed8';
+            return L.divIcon({
+                className: '', // デフォルトのクラスを消すため空文字
+                html: `<div class="custom-marker" style="background-color: ${bgColor}; width: 28px; height: 28px;">${number}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14],
+                popupAnchor: [0, -14]
+            });
+        };
+
+        // データをループしてマーカーとリストを作成
+        scheduleData.forEach((spot, index) => {
+            // 座標を配列に追加（ルート線を引くため）
+            latlngs.push([spot.lat, spot.lng]);
+
+            // マーカーを作成
+            const marker = L.marker([spot.lat, spot.lng], {
+                icon: createCustomIcon(spot.displayLabel, spot.isTerminal)
+            }).addTo(map);
+
+            // ポップアップのHTMLを構築
+            let popupContent = `
+                <div class="font-sans min-w-[200px]">
+                    <div class="font-bold text-lg text-blue-800 border-b pb-1 mb-2 flex items-center gap-1">
+                        <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">${spot.displayLabel}</span>
+                        ${spot.name}
+                    </div>
+                    <div class="text-sm mb-1"><i class="ph ph-clock text-gray-500 mr-1"></i>${spot.time}</div>
+                    <div class="text-sm mb-1"><i class="ph ph-person-simple-walk text-gray-500 mr-1"></i><span class="font-semibold text-red-600">${spot.action}</span></div>
+                    <div class="text-xs text-gray-600 mb-2"><i class="ph ph-map-pin text-gray-500 mr-1"></i>${spot.address}</div>
+            `;
+            if (spot.website) {
+                popupContent += `<a href="${spot.website}" target="_blank" class="text-xs text-blue-500 hover:underline flex items-center"><i class="ph ph-link mr-1"></i>公式サイトを開く</a>`;
+            }
+            popupContent += `</div>`;
+            marker.bindPopup(popupContent);
+            markers[spot.id] = marker;
+
+            // スケジュールリストのアイテムを作成
+            const listItem = document.createElement('div');
+            listItem.className = 'relative pl-10 pb-1 mt-2';
+            
+            // 左側のタイムラインの線
+            if (index !== scheduleData.length - 1) {
+                listItem.innerHTML += `<div class="absolute left-4 top-8 bottom-[-0.5rem] w-0.5 bg-gray-300"></div>`;
+            }
+
+            // アイコン（リスト上の丸）
+            const dotColor = spot.isTerminal ? 'bg-red-500' : 'bg-blue-600';
+            
+            // リストコンテンツのHTMLを構築
+            let listContent = `
+                <div class="absolute left-1 top-1 w-6 h-6 rounded-full ${dotColor} text-white flex items-center justify-center text-xs font-bold shadow-sm z-10 border-2 border-white ring-1 ring-gray-100">
+                    ${spot.displayLabel}
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-2.5 shadow-sm hover:shadow-md transition-shadow cursor-pointer relative" onclick="focusOnSpot(${spot.id}, ${spot.lat}, ${spot.lng})">
+                    <div class="flex justify-between items-start mb-2 gap-1">
+                        <h3 class="font-bold text-gray-800 text-sm leading-tight">${spot.name}</h3>
+                        <span class="text-[11px] bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 whitespace-nowrap font-medium tracking-tight">${spot.time}</span>
+                    </div>
+                    <div>
+                        <span class="inline-block bg-gray-800 text-white text-xs font-bold px-2 py-0.5 rounded">${spot.action}</span>
+                    </div>
+                </div>
+            `;
+
+            // 次の場所への移動情報
+            if (spot.transitNext) {
+                const isCar = spot.transitNext.includes('車');
+                const iconClass = isCar ? 'ph-car' : 'ph-person-simple-walk';
+                listContent += `
+                    <div class="py-2.5 flex items-center text-xs font-medium">
+                        <div class="absolute left-1.5 bg-white border border-gray-400 text-gray-800 rounded-full w-5 h-5 flex items-center justify-center z-10 shadow-sm">
+                            <i class="ph ${iconClass} text-[11px] font-bold"></i>
+                        </div>
+                        <span class="text-gray-800 text-[11px] font-semibold bg-white px-2.5 py-0.5 rounded-full border border-gray-300 ml-1 shadow-sm">${spot.transitNext}</span>
+                    </div>
+                `;
+            }
+
+            listItem.innerHTML += listContent;
+            scheduleListContainer.appendChild(listItem);
         });
 
-        window.onload = () => {
-            if (map) {
-                map.invalidateSize();
+        // 軌跡（ポリライン）を描画
+        const polyline = L.polyline(latlngs, {
+            color: '#3b82f6', // Tailwind blue-500
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 10' // 破線にする場合
+        }).addTo(map);
+
+        // 全てのマーカーが収まるようにマップの表示領域を調整
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+
+        // リストをクリックした時の関数
+        window.focusOnSpot = function(id, lat, lng) {
+            // マップを移動
+            map.setView([lat, lng], 15, {
+                animate: true,
+                duration: 1
+            });
+            // ポップアップを開く
+            markers[id].openPopup();
+
+            // モバイルの場合はマップまでスクロールする
+            if(window.innerWidth < 768) {
+                document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
             }
         };
 
+        // マップを全体表示に戻す関数
+        window.resetMapView = function() {
+            map.fitBounds(polyline.getBounds(), { 
+                padding: [50, 50],
+                animate: true,
+                duration: 1 
+            });
+            map.closePopup(); // 開いているポップアップを閉じる
+            
+            // モバイルの場合はマップまでスクロールする
+            if(window.innerWidth < 768) {
+                document.getElementById('map').scrollIntoView({ behavior: 'smooth' });
+            }
+        };
+
+        // ウィンドウリサイズ時にマップのサイズを再計算
+        window.addEventListener('resize', () => {
+            map.invalidateSize();
+        });
     </script>
 </body>
 </html>
